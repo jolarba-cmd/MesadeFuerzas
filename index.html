@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesa de Fuerzas VR</title>
+    <style>
+        #panel-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 40, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 280px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 100;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        #panel-control h3 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            font-size: 16px;
+            color: #4facfe;
+        }
+        .fuerza-control {
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .fuerza-control h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row .label {
+            font-size: 11px;
+            color: #a0aec0;
+            width: 45px;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+            outline: none;
+        }
+        .slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4facfe;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .slider-row .valor {
+            font-size: 12px;
+            font-weight: 700;
+            width: 45px;
+            text-align: right;
+            color: #4facfe;
+            font-family: 'Courier New', monospace;
+        }
+        #estado {
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #estado.equilibrio {
+            color: #68d391;
+            border: 1px solid rgba(104, 211, 145, 0.3);
+        }
+        #estado.desequilibrio {
+            color: #fc8181;
+            border: 1px solid rgba(252, 129, 129, 0.3);
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        #enter-vr {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        #enter-vr:hover {
+            background: #3a8fd9;
+        }
+        .botones-accion {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.btn-accion {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-guardar {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+    color: #0f0c29;
+}
+
+.btn-guardar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(67, 233, 123, 0.4);
+}
+
+.btn-informe {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: #0f0c29;
+}
+
+.btn-informe:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(79, 172, 254, 0.4);
+}
+
+#lista-configuraciones {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#lista-configuraciones h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #a0aec0;
+}
+
+#lista-config {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 11px;
+}
+
+#lista-config li {
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    color: #e2e8f0;
+    border-left: 3px solid #43e97b;
+}
+
+#lista-config li.vacio {
+    color: #718096;
+    font-style: italic;
+    border-left: 3px solid #4a5568;
+}
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>🔬 Mesa de Fuerzas VR</h2>
+        <p>Usa los controles para interactuar</p>
+    </div>
+    <button id="enter-vr">Entrar en VR</button>
+
+    <div id="panel-control">
+        <h3>🎮 Control de Fuerzas</h3>
+        <div class="fuerza-control">
+            <h4 style="color:#ff4444;">🔴 F1</h4>
+            <div class="slider-row">
+                <span class="label">Ángulo:</span>
+                <input type="range" id="angulo1" min="0" max="360" value="30">
+                <span class="valor" id="angulo1-valor">30°</span>
+            </div>
+            <div class="slider-row">
+                <span class="label">Masa:</span>
+                <input type="range" id="masa1" min="0" max="500" value="100">
+                <span class="valor" id="masa1-valor">100g</span>
+            </div>
+        </div>
+        <div class="fuerza-control">
+            <h4 style="color:#44ff44;">🟢 F2</h4>
+            <div class="slider-row">
+                <span class="label">Ángulo:</span>
+                <input type="range" id="angulo2" min="0" max="360" value="330">
+                <span class="valor" id="angulo2-valor">330°</span>
+            </div>
+            <div class="slider-row">
+                <span class="label">Masa:</span>
+                <input type="range" id="masa2" min="0" max="500" value="100">
+                <span class="valor" id="masa2-valor">100g</span>
+            </div>
+        </div>
+        <div class="fuerza-control">
+            <h4 style="color:#4444ff;">🔵 F3</h4>
+            <div class="slider-row">
+                <span class="label">Ángulo:</span>
+                <input type="range" id="angulo3" min="0" max="360" value="180">
+                <span class="valor" id="angulo3-valor">180°</span>
+            </div>
+            <div class="slider-row">
+                <span class="label">Masa:</span>
+                <input type="range" id="masa3" min="0" max="500" value="173">
+                <span class="valor" id="masa3-valor">173g</span>
+            </div>
+        </div>
+        <!-- Botones de acción -->
+<div class="botones-accion">
+    <button id="btn-guardar" class="btn-accion btn-guardar">
+        💾 Guardar Configuración
+    </button>
+    <button id="btn-generar-informe" class="btn-accion btn-informe">
+        📄 Generar Informe
+    </button>
+</div>
+
+<!-- Lista de configuraciones guardadas -->
+<div id="lista-configuraciones">
+    <h4>📋 Configuraciones guardadas</h4>
+    <ul id="lista-config">
+        <li class="vacio">No hay configuraciones guardadas</li>
+    </ul>
+</div>
+        <div id="estado">
+            <span id="estado-texto">❌ Desequilibrio</span>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "docx": "https://unpkg.com/docx@8.5.0/build/index.mjs"
+        }
+    }
+</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle } from 'docx';
+
+        // ============================================================
+        // CONFIGURACIÓN BÁSICA
+        // ============================================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.5, 1.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0.8, -0.5);
+        controls.update();
+
+        // ============================================================
+        // ILUMINACIÓN
+        // ============================================================
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // ============================================================
+        // PISO (pequeño, 1 metro de radio)
+        // ============================================================
+        const floorGeometry = new THREE.CircleGeometry(1.5, 32);
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        scene.add(floor);
+
+        // ============================================================
+        // MESA DE FUERZAS
+        // ============================================================
+        function crearTexturaMesa() {
+            const canvas = document.createElement('canvas');
+            const size = 1024;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#e0e0e0';
+            ctx.fillRect(0, 0, size, size);
+            
+            ctx.save();
+            ctx.translate(size / 2, size / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.scale(1, -1);
+            ctx.translate(-size / 2, -size / 2);
+            
+            const cx = size / 2;
+            const cy = size / 2;
+            const radioExterior = size / 2 - 20;
+            const radioInterior = radioExterior - 40;
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, radioExterior, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, radioInterior, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, 40, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            for (let angulo = 0; angulo < 360; angulo += 10) {
+                const rad = angulo * Math.PI / 180;
+                const esPrincipal = angulo % 30 === 0;
+                const largoMarca = esPrincipal ? 30 : 15;
+                
+                const x1 = cx + (radioExterior - largoMarca) * Math.cos(rad);
+                const y1 = cy + (radioExterior - largoMarca) * Math.sin(rad);
+                const x2 = cx + radioExterior * Math.cos(rad);
+                const y2 = cy + radioExterior * Math.sin(rad);
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = esPrincipal ? '#000' : '#555';
+                ctx.lineWidth = esPrincipal ? 3 : 1;
+                ctx.stroke();
+                
+                if (esPrincipal) {
+                    const radioTexto = radioExterior - 55;
+                    const xTexto = cx + radioTexto * Math.cos(rad);
+                    const yTexto = cy + radioTexto * Math.sin(rad);
+                    
+                    ctx.save();
+                    ctx.fillStyle = '#000';
+                    ctx.font = 'bold 22px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(angulo + '°', xTexto, yTexto);
+                    ctx.restore();
+                }
+            }
+            
+            for (let angulo = 0; angulo < 360; angulo += 90) {
+                const rad = angulo * Math.PI / 180;
+                const x1 = cx + 40 * Math.cos(rad);
+                const y1 = cy + 40 * Math.sin(rad);
+                const x2 = cx + radioExterior * Math.cos(rad);
+                const y2 = cy + radioExterior * Math.sin(rad);
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#222';
+            ctx.fill();
+            
+            ctx.restore();
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const texturaMesa = crearTexturaMesa();
+        const materialLateral = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const materialTapaSuperior = new THREE.MeshStandardMaterial({ 
+            map: texturaMesa,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const materialTapaInferior = new THREE.MeshStandardMaterial({ color: 0x555555 });
+
+        const mesaGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 64);
+        const mesa = new THREE.Mesh(mesaGeometry, [
+            materialLateral,
+            materialTapaSuperior,
+            materialTapaInferior
+        ]);
+        mesa.position.set(0, 0.8, -0.5);
+        mesa.rotation.y = -Math.PI / 2;
+        scene.add(mesa);
+
+        // ============================================================
+        // FLECHAS
+        // ============================================================
+        const flechas = [];
+        const colores = [0xff4444, 0x44ff44, 0x4444ff];
+
+        for (let i = 0; i < 3; i++) {
+            const flechaGroup = new THREE.Group();
+            
+            const cuerpoGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1, 8);
+            const cuerpoMaterial = new THREE.MeshStandardMaterial({ color: colores[i] });
+            const cuerpo = new THREE.Mesh(cuerpoGeometry, cuerpoMaterial);
+            cuerpo.rotation.z = Math.PI / 2;
+            cuerpo.position.x = 0.5;
+            flechaGroup.add(cuerpo);
+            
+            const puntaGeometry = new THREE.ConeGeometry(0.04, 0.1, 8);
+            const punta = new THREE.Mesh(puntaGeometry, cuerpoMaterial);
+            punta.rotation.z = -Math.PI / 2;
+            punta.position.x = 1.05;
+            flechaGroup.add(punta);
+            
+            flechaGroup.position.set(0, 0.85, -0.5);
+            flechaGroup.rotation.y = [30, 330, 180][i] * Math.PI / 180;
+            
+            scene.add(flechaGroup);
+            flechas.push(flechaGroup);
+        }
+
+        // ============================================================
+        // BURBUJA
+        // ============================================================
+        const burbujaGeometry = new THREE.SphereGeometry(0.04, 32, 32);
+        const burbujaMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+        const burbuja = new THREE.Mesh(burbujaGeometry, burbujaMaterial);
+        burbuja.position.set(0, 0.9, -0.5);
+        scene.add(burbuja);
+
+        // ============================================================
+        // SLIDERS 3D PARA VR
+        // ============================================================
+        const sliders3D = [];
+
+       function crearSlider3D(posX, posY, posZ, nombre, min, max, valorInicial, color) {
+    const sliderGroup = new THREE.Group();
+    
+    // Riel del slider
+    const rielGeometry = new THREE.BoxGeometry(0.6, 0.02, 0.02);
+    const rielMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+    const riel = new THREE.Mesh(rielGeometry, rielMaterial);
+    sliderGroup.add(riel);
+    
+    // Perilla del slider
+    const perillaGeometry = new THREE.SphereGeometry(0.035, 16, 16);
+    const perillaMaterial = new THREE.MeshStandardMaterial({ color: color });
+    const perilla = new THREE.Mesh(perillaGeometry, perillaMaterial);
+    
+    const rango = max - min;
+    const porcentaje = (valorInicial - min) / rango;
+    const posPerillaX = (porcentaje - 0.5) * 0.6;
+    
+    perilla.position.set(posPerillaX, 0, 0);
+    sliderGroup.add(perilla);
+    
+    // ============================================================
+    // TEXTO 3D CON EL VALOR
+    // ============================================================
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, 256, 64);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Determinar la unidad según el nombre
+    const unidad = nombre.startsWith('angulo') ? '°' : 'g';
+    ctx.fillText(valorInicial + unidad, 128, 32);
+    
+    const textura = new THREE.CanvasTexture(canvas);
+    const textoMaterial = new THREE.MeshBasicMaterial({ 
+        map: textura,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const textoGeometry = new THREE.PlaneGeometry(0.25, 0.06);
+    const texto3D = new THREE.Mesh(textoGeometry, textoMaterial);
+    texto3D.position.set(0, 0.08, 0);
+    sliderGroup.add(texto3D);
+    
+    // Guardar datos
+    sliderGroup.userData = {
+        nombre: nombre,
+        min: min,
+        max: max,
+        valor: valorInicial,
+        perilla: perilla,
+        color: color,
+        canvas: canvas,
+        ctx: ctx,
+        textura: textura,
+        texto3D: texto3D,
+        unidad: unidad
+    };
+    
+    sliderGroup.position.set(posX, posY, posZ);
+    scene.add(sliderGroup);
+    sliders3D.push(sliderGroup);
+    
+    return sliderGroup;
+}
+// ============================================================
+// CREAR LOS 6 SLIDERS 3D (PANEL VERTICAL)
+// ============================================================
+// Todos los sliders están en el MISMO plano XZ (Z = -1.2)
+// pero separados VERTICALMENTE en el eje Y
+
+// F1 (Rojo) - Arriba
+crearSlider3D(0, 1.9, -1.2, 'angulo1', 0, 360, 30, 0xff4444);
+crearSlider3D(0, 1.75, -1.2, 'masa1', 0, 500, 100, 0xff8888);
+
+// F2 (Verde) - Medio
+crearSlider3D(0, 1.5, -1.2, 'angulo2', 0, 360, 330, 0x44ff44);
+crearSlider3D(0, 1.35, -1.2, 'masa2', 0, 500, 100, 0x88ff88);
+
+// F3 (Azul) - Abajo
+crearSlider3D(0, 1.1, -1.2, 'angulo3', 0, 360, 180, 0x4444ff);
+crearSlider3D(0, 0.95, -1.2, 'masa3', 0, 500, 173, 0x8888ff);
+// ============================================================
+// FUNCIÓN PARA CREAR ETIQUETAS DE TEXTO 3D
+// ============================================================
+function crearEtiqueta(texto, posX, posY, posZ, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, 256, 128);
+    
+    ctx.fillStyle = color;
+    ctx.font = 'bold 80px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texto, 128, 64);
+    
+    const textura = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({ 
+        map: textura, 
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const geometry = new THREE.PlaneGeometry(0.2, 0.1);
+    const etiqueta = new THREE.Mesh(geometry, material);
+    etiqueta.position.set(posX, posY, posZ);
+    scene.add(etiqueta);
+    
+    return etiqueta;
+}
+
+// Crear etiquetas para cada fuerza
+crearEtiqueta('F1', 0, 2.05, -1.2, '#ff4444');
+crearEtiqueta('F2', 0, 1.65, -1.2, '#44ff44');
+crearEtiqueta('F3', 0, 1.25, -1.2, '#4444ff');
+// ============================================================
+// FUNCIÓN PARA CREAR BOTONES 3D
+// ============================================================
+function crearBoton3D(texto, posX, posY, posZ, colorFondo, colorTexto, accion) {
+    const botonGroup = new THREE.Group();
+    
+    // ============================================================
+    // PLACA DEL BOTÓN (caja alargada)
+    // ============================================================
+    const placaGeometry = new THREE.BoxGeometry(0.4, 0.12, 0.02);
+    const placaMaterial = new THREE.MeshStandardMaterial({ 
+        color: colorFondo,
+        emissive: colorFondo,
+        emissiveIntensity: 0.2
+    });
+    const placa = new THREE.Mesh(placaGeometry, placaMaterial);
+    botonGroup.add(placa);
+    
+    // ============================================================
+    // TEXTO DEL BOTÓN
+    // ============================================================
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+    ctx.fillRect(0, 0, 512, 128);
+    
+    ctx.fillStyle = colorTexto;
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texto, 256, 64);
+    
+    const textura = new THREE.CanvasTexture(canvas);
+    const textoMaterial = new THREE.MeshBasicMaterial({ 
+        map: textura,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const textoGeometry = new THREE.PlaneGeometry(0.38, 0.1);
+    const texto3D = new THREE.Mesh(textoGeometry, textoMaterial);
+    texto3D.position.set(0, 0, 0.011);
+    botonGroup.add(texto3D);
+    
+    // ============================================================
+    // GUARDAR DATOS DEL BOTÓN
+    // ============================================================
+    botonGroup.userData = {
+        esBoton: true,
+        accion: accion,
+        colorOriginal: colorFondo,
+        placa: placa,
+        texto: texto3D
+    };
+    
+    botonGroup.position.set(posX, posY, posZ);
+    scene.add(botonGroup);
+    
+    return botonGroup;
+}
+
+// ============================================================
+// CREAR LOS BOTONES 3D EN EL PLANO XZ (HORIZONTAL)
+// ============================================================
+// Estos botones están en el plano XZ (horizontal), a la derecha
+// del usuario y a una altura accesible.
+
+// Botón Guardar Configuración (verde)
+const botonGuardar3D = crearBoton3D(
+    'GUARDAR', 
+    0.8, 0.9, -0.8,    // Posición: derecha, altura media, al frente
+    0x43e97b,           // Color fondo: verde
+    '#0f0c29',          // Color texto: oscuro
+    'guardar'           // Acción
+);
+botonGuardar3D.rotation.x = -Math.PI / 2; // Acostado (horizontal)
+
+// Botón Generar Informe (azul)
+const botonInforme3D = crearBoton3D(
+    'INFORME', 
+    0.8, 0.9, -1.3,    // Posición: derecha, misma altura, más al frente
+    0x4facfe,           // Color fondo: azul
+    '#0f0c29',          // Color texto: oscuro
+    'informe'           // Acción
+);
+botonInforme3D.rotation.x = -Math.PI / 2; // Acostado (horizontal)
+        // ============================================================
+        // CONFIGURACIÓN DE VR
+        // ============================================================
+        document.body.appendChild(VRButton.createButton(renderer));
+
+        const controller1 = renderer.xr.getController(0);
+        const sphere1 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x4facfe })
+        );
+        controller1.add(sphere1);
+        scene.add(controller1);
+
+        const controller2 = renderer.xr.getController(1);
+        const sphere2 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x4facfe })
+        );
+        controller2.add(sphere2);
+        scene.add(controller2);
+
+        const laserMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+        const laserGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -2)
+        ]);
+
+        const laser1 = new THREE.Line(laserGeometry, laserMaterial);
+        controller1.add(laser1);
+
+        const laser2 = new THREE.Line(laserGeometry, laserMaterial);
+        controller2.add(laser2);
+
+        // ============================================================
+        // INTERACCIÓN DE LÁSERES CON SLIDERS
+        // ============================================================
+        const raycaster = new THREE.Raycaster();
+        const tempMatrix = new THREE.Matrix4();
+
+        function onSelectStart(event) {
+    const controller = event.target;
+    
+    tempMatrix.identity().extractRotation(controller.matrixWorld);
+    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    
+    // ============================================================
+    // 1. DETECTAR SLIDERS
+    // ============================================================
+    const intersectsSliders = raycaster.intersectObjects(sliders3D, true);
+    
+    if (intersectsSliders.length > 0) {
+        let sliderHit = intersectsSliders[0].object;
+        while (sliderHit.parent && !sliderHit.userData.nombre) {
+            sliderHit = sliderHit.parent;
+        }
+        if (sliderHit.userData && sliderHit.userData.nombre) {
+            controller.userData.sliderAgarrado = sliderHit;
+            console.log('Slider agarrado:', sliderHit.userData.nombre);
+            return;
+        }
+    }
+    
+    // ============================================================
+    // 2. DETECTAR BOTONES 3D
+    // ============================================================
+    const intersectsBotones = raycaster.intersectObjects([botonGuardar3D, botonInforme3D], true);
+    
+    if (intersectsBotones.length > 0) {
+        let botonHit = intersectsBotones[0].object;
+        while (botonHit.parent && !botonHit.userData.esBoton) {
+            botonHit = botonHit.parent;
+        }
+        if (botonHit.userData && botonHit.userData.esBoton) {
+            console.log('Botón presionado:', botonHit.userData.accion);
+            
+            // Ejecutar la acción correspondiente
+            if (botonHit.userData.accion === 'guardar') {
+                guardarConfiguracion();
+            } else if (botonHit.userData.accion === 'informe') {
+                generarInforme();
+            }
+            
+            // Feedback visual (cambiar color brevemente)
+            const colorOriginal = botonHit.userData.colorOriginal;
+            botonHit.userData.placa.material.color.setHex(0xffffff);
+            setTimeout(() => {
+                botonHit.userData.placa.material.color.setHex(colorOriginal);
+            }, 300);
+        }
+    }
+}
+
+        function onSelectEnd(event) {
+            const controller = event.target;
+            controller.userData.sliderAgarrado = null;
+        }
+
+        controller1.addEventListener('selectstart', onSelectStart);
+        controller1.addEventListener('selectend', onSelectEnd);
+        controller2.addEventListener('selectstart', onSelectStart);
+        controller2.addEventListener('selectend', onSelectEnd);
+
+        // ============================================================
+        // LÓGICA DE FUERZAS
+        // ============================================================
+        const estado = {
+            angulo1: 30, masa1: 100,
+            angulo2: 330, masa2: 100,
+            angulo3: 180, masa3: 173
+        };
+
+        function actualizarFlechas() {
+            flechas[0].rotation.y = (estado.angulo1 - 90) * Math.PI / 180;
+            flechas[1].rotation.y = (estado.angulo2 - 90) * Math.PI / 180;
+            flechas[2].rotation.y = (estado.angulo3 - 90) * Math.PI / 180;
+            
+            const escalaMax = 1.5;
+            const escalaMin = 0.3;
+            
+            for (let i = 0; i < 3; i++) {
+                const masa = [estado.masa1, estado.masa2, estado.masa3][i];
+                const escala = escalaMin + (masa / 500) * (escalaMax - escalaMin);
+                flechas[i].scale.set(escala, 1, 1);
+            }
+            
+            const v1 = vectorDeFuerza(estado.angulo1, estado.masa1);
+            const v2 = vectorDeFuerza(estado.angulo2, estado.masa2);
+            const v3 = vectorDeFuerza(estado.angulo3, estado.masa3);
+            const resultante = {
+                x: v1.x + v2.x + v3.x,
+                z: v1.z + v2.z + v3.z
+            };
+            const magnitud = Math.sqrt(resultante.x * resultante.x + resultante.z * resultante.z);
+            
+            const desplazamientoMax = 0.3;
+            burbuja.position.x = resultante.x * desplazamientoMax;
+            burbuja.position.z = resultante.z * desplazamientoMax - 0.5;
+            
+            if (magnitud < 0.1) {
+                burbuja.material.color.setHex(0x00ff00);
+                document.getElementById('estado-texto').textContent = '✅ Equilibrio';
+                document.getElementById('estado').className = 'equilibrio';
+            } else if (magnitud < 0.5) {
+                burbuja.material.color.setHex(0xffaa00);
+                document.getElementById('estado-texto').textContent = '⚠️ Casi equilibrio';
+                document.getElementById('estado').className = '';
+            } else {
+                burbuja.material.color.setHex(0xff0000);
+                document.getElementById('estado-texto').textContent = '❌ Desequilibrio';
+                document.getElementById('estado').className = 'desequilibrio';
+            }
+        }
+
+        function vectorDeFuerza(angulo, masa) {
+            const magnitud = masa / 500;
+            const rad = angulo * Math.PI / 180;
+            return {
+                x: magnitud * Math.cos(rad),
+                z: magnitud * Math.sin(rad)
+            };
+        }
+
+        // ============================================================
+        // CONECTAR SLIDERS HTML (PC)
+        // ============================================================
+        function configurarSlider(idSlider, idValor, propiedad, unidad) {
+            const slider = document.getElementById(idSlider);
+            const valor = document.getElementById(idValor);
+            
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                estado[propiedad] = val;
+                valor.textContent = val + unidad;
+                actualizarFlechas();
+            });
+        }
+
+        configurarSlider('angulo1', 'angulo1-valor', 'angulo1', '°');
+        configurarSlider('masa1', 'masa1-valor', 'masa1', 'g');
+        configurarSlider('angulo2', 'angulo2-valor', 'angulo2', '°');
+        configurarSlider('masa2', 'masa2-valor', 'masa2', 'g');
+        configurarSlider('angulo3', 'angulo3-valor', 'angulo3', '°');
+        configurarSlider('masa3', 'masa3-valor', 'masa3', 'g');
+
+        actualizarFlechas();
+// ============================================================
+// SISTEMA DE GUARDADO DE CONFIGURACIONES
+// ============================================================
+const configuracionesGuardadas = [];
+
+function guardarConfiguracion() {
+    // Capturar los valores actuales
+    const config = {
+        fecha: new Date().toLocaleString(),
+        angulo1: estado.angulo1,
+        masa1: estado.masa1,
+        angulo2: estado.angulo2,
+        masa2: estado.masa2,
+        angulo3: estado.angulo3,
+        masa3: estado.masa3,
+        resultante: calcularResultante()
+    };
+    
+    // Agregar a la lista
+    configuracionesGuardadas.push(config);
+    
+    // Actualizar la interfaz
+    actualizarListaConfiguraciones();
+    
+    // Feedback visual
+    console.log('✅ Configuración guardada:', config);
+    
+    // Animación de confirmación en el botón
+    const btn = document.getElementById('btn-guardar');
+    if (btn) {
+        btn.textContent = '✅ Guardado';
+        setTimeout(() => {
+            btn.textContent = '💾 Guardar Configuración';
+        }, 1500);
+    }
+}
+
+function calcularResultante() {
+    const v1 = vectorDeFuerza(estado.angulo1, estado.masa1);
+    const v2 = vectorDeFuerza(estado.angulo2, estado.masa2);
+    const v3 = vectorDeFuerza(estado.angulo3, estado.masa3);
+    
+    const rx = v1.x + v2.x + v3.x;
+    const rz = v1.z + v2.z + v3.z;
+    const magnitud = Math.sqrt(rx * rx + rz * rz);
+    
+    return {
+        x: rx,
+        z: rz,
+        magnitud: magnitud,
+        enEquilibrio: magnitud < 0.1
+    };
+}
+
+function actualizarListaConfiguraciones() {
+    const lista = document.getElementById('lista-config');
+    if (!lista) return;
+    
+    if (configuracionesGuardadas.length === 0) {
+        lista.innerHTML = '<li class="vacio">No hay configuraciones guardadas</li>';
+        return;
+    }
+    
+    lista.innerHTML = configuracionesGuardadas.map((config, index) => `
+        <li>
+            <strong>#${index + 1}</strong> - 
+            F1: ${Math.round(config.angulo1)}° / ${Math.round(config.masa1)}g | 
+            F2: ${Math.round(config.angulo2)}° / ${Math.round(config.masa2)}g | 
+            F3: ${Math.round(config.angulo3)}° / ${Math.round(config.masa3)}g
+            ${config.resultante.enEquilibrio ? '✅' : '❌'}
+        </li>
+    `).join('');
+}
+
+// Conectar el botón de guardar
+document.getElementById('btn-guardar').addEventListener('click', guardarConfiguracion);
+// ============================================================
+// GENERAR INFORME EN WORD
+// ============================================================
+async function generarInforme() {
+    if (configuracionesGuardadas.length === 0) {
+        alert('⚠️ No hay configuraciones guardadas. Guarda al menos una antes de generar el informe.');
+        return;
+    }
+
+    // ============================================================
+    // CONSTRUIR EL DOCUMENTO WORD
+    // ============================================================
+    const children = [];
+
+    // Título
+    children.push(
+        new Paragraph({
+            text: 'INFORME DE PRÁCTICA - MESA DE FUERZAS VR',
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 }
+        })
+    );
+
+    // Fecha y hora
+    children.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: 'Fecha: ', bold: true }),
+                new TextRun({ text: new Date().toLocaleString() })
+            ],
+            spacing: { after: 200 }
+        })
+    );
+
+    // Total de configuraciones
+    children.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: 'Total de configuraciones: ', bold: true }),
+                new TextRun({ text: configuracionesGuardadas.length.toString() })
+            ],
+            spacing: { after: 400 }
+        })
+    );
+
+    // ============================================================
+    // TABLA DE CONFIGURACIONES
+    // ============================================================
+    const filasTabla = [];
+
+    // Encabezados
+    filasTabla.push(
+        new TableRow({
+            children: [
+                new TableCell({ children: [new Paragraph({ text: '#', alignment: AlignmentType.CENTER })], width: { size: 8, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F1 Ángulo', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F1 Masa', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F2 Ángulo', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F2 Masa', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F3 Ángulo', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'F3 Masa', alignment: AlignmentType.CENTER })], width: { size: 13, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ text: 'Estado', alignment: AlignmentType.CENTER })], width: { size: 14, type: WidthType.PERCENTAGE } })
+            ]
+        })
+    );
+
+    // Filas de datos
+    configuracionesGuardadas.forEach((config, index) => {
+        filasTabla.push(
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: (index + 1).toString(), alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.angulo1) + '°', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.masa1) + 'g', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.angulo2) + '°', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.masa2) + 'g', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.angulo3) + '°', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: Math.round(config.masa3) + 'g', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: config.resultante.enEquilibrio ? '✅ Equilibrio' : '❌ Desequilibrio', alignment: AlignmentType.CENTER })] })
+                ]
+            })
+        );
+    });
+
+    children.push(
+        new Table({
+            rows: filasTabla,
+            width: { size: 100, type: WidthType.PERCENTAGE }
+        })
+    );
+
+    // Espacio después de la tabla
+    children.push(new Paragraph({ text: '', spacing: { after: 400 } }));
+
+    // ============================================================
+    // DETALLE DE CADA CONFIGURACIÓN
+    // ============================================================
+    children.push(
+        new Paragraph({
+            text: 'DETALLE DE CADA CONFIGURACIÓN',
+            heading: HeadingLevel.HEADING_2,
+            spacing: { after: 200 }
+        })
+    );
+
+    configuracionesGuardadas.forEach((config, index) => {
+        children.push(
+            new Paragraph({
+                text: `Configuración #${index + 1}`,
+                heading: HeadingLevel.HEADING_3,
+                spacing: { before: 200, after: 100 }
+            })
+        );
+
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: 'F1: ', bold: true, color: 'FF4444' }),
+                    new TextRun({ text: `Ángulo = ${Math.round(config.angulo1)}°, Masa = ${Math.round(config.masa1)}g` })
+                ]
+            })
+        );
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: 'F2: ', bold: true, color: '44FF44' }),
+                    new TextRun({ text: `Ángulo = ${Math.round(config.angulo2)}°, Masa = ${Math.round(config.masa2)}g` })
+                ]
+            })
+        );
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: 'F3: ', bold: true, color: '4444FF' }),
+                    new TextRun({ text: `Ángulo = ${Math.round(config.angulo3)}°, Masa = ${Math.round(config.masa3)}g` })
+                ]
+            })
+        );
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: 'Resultante: ', bold: true }),
+                    new TextRun({ text: `${config.resultante.magnitud.toFixed(3)} N` })
+                ]
+            })
+        );
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: 'Estado: ', bold: true }),
+                    new TextRun({ 
+                        text: config.resultante.enEquilibrio ? '✅ EQUILIBRIO' : '❌ DESEQUILIBRIO',
+                        color: config.resultante.enEquilibrio ? '008000' : 'FF0000',
+                        bold: true
+                    })
+                ],
+                spacing: { after: 200 }
+            })
+        );
+    });
+
+    // ============================================================
+    // CREAR EL DOCUMENTO
+    // ============================================================
+    const doc = new Document({
+        sections: [{
+            children: children
+        }]
+    });
+
+    // ============================================================
+    // GENERAR EL ARCHIVO Y DESCARGARLO
+    // ============================================================
+    try {
+        const blob = await Packer.toBlob(doc);
+        
+        // Descargar el archivo
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Informe_MesaFuerzas_${new Date().toISOString().slice(0, 10)}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('✅ Informe generado correctamente');
+        
+        // Feedback visual
+        const btn = document.getElementById('btn-generar-informe');
+        if (btn) {
+            btn.textContent = '✅ Informe Generado';
+            setTimeout(() => {
+                btn.textContent = '📄 Generar Informe';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('❌ Error al generar el informe:', error);
+        alert('Error al generar el informe: ' + error.message);
+    }
+}
+
+// Conectar el botón de generar informe
+document.getElementById('btn-generar-informe').addEventListener('click', generarInforme);
+        // ============================================================
+        // ANIMACIÓN
+        // ============================================================
+        function animate() {
+            renderer.setAnimationLoop(animate);
+            
+            [controller1, controller2].forEach(controller => {
+                const slider = controller.userData.sliderAgarrado;
+                if (slider) {
+                    const posControlador = new THREE.Vector3();
+                    controller.getWorldPosition(posControlador);
+                    slider.worldToLocal(posControlador);
+                    
+                    const rango = slider.userData.max - slider.userData.min;
+                    let porcentaje = (posControlador.x / 0.6) + 0.5;
+                    porcentaje = Math.max(0, Math.min(1, porcentaje));
+                    
+                    const nuevoValor = slider.userData.min + porcentaje * rango;
+                    slider.userData.valor = nuevoValor;
+                    slider.userData.perilla.position.x = (porcentaje - 0.5) * 0.6;
+                    // Actualizar el texto del slider
+                    if (slider.userData.ctx && slider.userData.textura) {
+                    const ctx = slider.userData.ctx;
+                    const unidad = slider.userData.unidad || '';
+    
+                    // Limpiar el canvas
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, 0, 256, 64);
+    
+                    // Dibujar el nuevo valor
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 40px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(Math.round(nuevoValor) + unidad, 128, 32);
+    
+                    // Actualizar la textura
+                    slider.userData.textura.needsUpdate = true;
+                    }                    
+                    const nombre = slider.userData.nombre;
+                    if (nombre === 'angulo1') estado.angulo1 = nuevoValor;
+                    if (nombre === 'masa1') estado.masa1 = nuevoValor;
+                    if (nombre === 'angulo2') estado.angulo2 = nuevoValor;
+                    if (nombre === 'masa2') estado.masa2 = nuevoValor;
+                    if (nombre === 'angulo3') estado.angulo3 = nuevoValor;
+                    if (nombre === 'masa3') estado.masa3 = nuevoValor;
+                    
+                    actualizarFlechas();
+                }
+            });
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
